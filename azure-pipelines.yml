@@ -1,23 +1,22 @@
 # Docker
 # Build and push an image to Azure Container Registry
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-pool:
-  name: Default
+
 trigger:
 - master
 
 resources:
 - repo: self
 
+pool:
+  name: Default    # Top-level default agent pool (self-hosted)
+
 variables:
-  # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'aef1e3f7-5c9b-4e42-b043-49a652a47f2d'
   imageRepository: 'dockeracr'
   containerRegistry: 'myazurerepo1.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-
-  vmImageName: 'ubuntu-latest'
 
 stages:
 - stage: Build
@@ -26,8 +25,11 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      vmImage: $(vmImageName)
+      name: Default        # ✅ Ensure it uses your self-hosted agent pool
     steps:
+    - script: echo "Running on my self-hosted macOS agent!"
+
+    # Build Docker image
     - task: Docker@2
       displayName: Build Docker image 
       inputs:
@@ -37,13 +39,15 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
-    # Install Trivy Scanner on Agent
+
+    # Install Trivy Scanner
     - task: Bash@3
       displayName: "Install Trivy"
       inputs:
         targetType: inline
         script: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+
     # Run Trivy Scan
     - task: Bash@3
       displayName: "Run Trivy Scan"
@@ -51,8 +55,10 @@ stages:
         targetType: inline
         script: |
           ./bin/trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed $(containerRegistry)/$(imageRepository):$(tag)
+
+    # Push Docker image to container registry
     - task: Docker@2
-      displayName: push Docker image to container registry
+      displayName: Push Docker image to container registry
       inputs:
         command: push
         repository: $(imageRepository)
@@ -60,7 +66,8 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
-   #Publish Build Information
+
+    # Log Image Details
     - task: Bash@3
       displayName: "Log Image Details"
       inputs:

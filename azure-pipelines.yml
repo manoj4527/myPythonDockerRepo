@@ -54,7 +54,7 @@ stages:
       inputs:
         targetType: inline
         script: |
-          ./bin/trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed $(containerRegistry)/$(imageRepository):$(tag)
+          trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed $(containerRegistry)/$(imageRepository):$(tag)
 
     # Push Docker image to container registry
     - task: Docker@2
